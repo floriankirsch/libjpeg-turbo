@@ -205,8 +205,13 @@ start_pass_phuff_decoder (j_decompress_ptr cinfo)
 #define AVOID_TABLES
 #ifdef AVOID_TABLES
 
-#define NEG_1 ((unsigned)-1)
-#define HUFF_EXTEND(x,s)  ((x) < (1<<((s)-1)) ? (x) + (((NEG_1)<<(s)) + 1) : (x))
+ /*
+ * Branchless implementation. If x < extend_test[s], (x >> (s-1)) ^ 1 is 1,
+ * otherwise it is 0, because of the pre-condition that x has only
+ * s significant bits. Given that, if x < extend_test[s], -(1 << s) + 1
+ * is added to x, whereas in the other case -(0 << s) + 0 does not change x.
+ */
+#define HUFF_EXTEND(x,s) ((x) - ((((x) >> ((s)-1)) ^ 1) << (s)) + (((x) >> ((s)-1)) ^ 1))
 
 #else
 
@@ -492,6 +497,8 @@ decode_mcu_DC_refine (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
 /*
  * MCU decoding for AC successive approximation refinement scan.
  */
+
+#define NEG_1 ((unsigned)-1)
 
 METHODDEF(boolean)
 decode_mcu_AC_refine (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)

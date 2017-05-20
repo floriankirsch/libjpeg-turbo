@@ -492,8 +492,13 @@ jpeg_huff_decode (bitread_working_state *state,
 #define AVOID_TABLES
 #ifdef AVOID_TABLES
 
-#define NEG_1 ((unsigned int)-1)
-#define HUFF_EXTEND(x,s)  ((x) + ((((x) - (1<<((s)-1))) >> 31) & (((NEG_1)<<(s)) + 1)))
+/*
+ * Branchless implementation. If x < extend_test[s], (x >> (s-1)) ^ 1 is 1,
+ * otherwise it is 0, because of the pre-condition that x has only
+ * s significant bits. Given that, if x < extend_test[s], -(1 << s) + 1
+ * is added to x, whereas in the other case -(0 << s) + 0 does not change x.
+ */
+#define HUFF_EXTEND(x,s) ((x) - ((((x) >> ((s)-1)) ^ 1) << (s)) + (((x) >> ((s)-1)) ^ 1))
 
 #else
 

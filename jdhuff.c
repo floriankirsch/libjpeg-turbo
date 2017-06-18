@@ -242,7 +242,7 @@ jpeg_make_d_derived_tbl (j_decompress_ptr cinfo, boolean isDC, int tblno,
    */
 
    for (i = 0; i < (1 << HUFF_LOOKAHEAD); i++)
-     dtbl->lookup[i] = (HUFF_LOOKAHEAD + 1) << HUFF_LOOKAHEAD;
+     dtbl->lookup[i] = HUFF_LOOKAHEAD + 1;
 
   p = 0;
   for (l = 1; l <= HUFF_LOOKAHEAD; l++) {
@@ -251,7 +251,7 @@ jpeg_make_d_derived_tbl (j_decompress_ptr cinfo, boolean isDC, int tblno,
       /* Generate left-justified code followed by all possible bit sequences */
       lookbits = huffcode[p] << (HUFF_LOOKAHEAD-l);
       for (ctr = 1 << (HUFF_LOOKAHEAD-l); ctr > 0; ctr--) {
-        dtbl->lookup[lookbits] = (l << HUFF_LOOKAHEAD) | htbl->huffval[p];
+        dtbl->lookup[lookbits] = l | (htbl->huffval[p] << HUFF_CODELEN_BITS);
         lookbits++;
       }
     }

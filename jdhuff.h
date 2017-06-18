@@ -211,7 +211,9 @@ slowlabel: \
   } \
 }
 
-#define HUFF_DECODE_FAST(s,nb,htbl) \
+#define HUFF_DECODE_FAST(s,htbl) \
+{ \
+  int nb; \
   FILL_BIT_BUFFER_FAST; \
   s = PEEK_BITS(HUFF_LOOKAHEAD); \
   s = htbl->lookup[s]; \
@@ -221,6 +223,7 @@ slowlabel: \
   s = s >> HUFF_CODELEN_BITS; \
   if (nb > HUFF_LOOKAHEAD) { \
     /* Equivalent of jpeg_huff_decode() */ \
+    nb = HUFF_LOOKAHEAD + 1; \
     /* Don't use GET_BITS() here because we don't want to modify bits_left */ \
     s = (get_buffer >> bits_left) & ((1 << (nb)) - 1); \
     while (s > htbl->maxcode[nb]) { \
@@ -229,7 +232,8 @@ slowlabel: \
       nb++; \
     } \
     s = htbl->pub->huffval[ (int) (s + htbl->valoffset[nb]) & 0xFF ]; \
-  }
+  } \
+}
 
 /* Out-of-line case for Huffman code fetching */
 EXTERN(int) jpeg_huff_decode

@@ -672,9 +672,9 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
     JBLOCKROW block = MCU_data ? MCU_data[blkn] : NULL;
     d_derived_tbl *dctbl = entropy->dc_cur_tbls[blkn];
     d_derived_tbl *actbl = entropy->ac_cur_tbls[blkn];
-    register int s, k, r, l;
+    register int s, k, r;
 
-    HUFF_DECODE_FAST(s, l, dctbl);
+    HUFF_DECODE_FAST(s, dctbl);
     if (s) {
       FILL_BIT_BUFFER_FAST
       r = GET_BITS(s);
@@ -692,7 +692,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
     if (entropy->ac_needed[blkn] && block) {
 
       for (k = 1; k < DCTSIZE2; k++) {
-        HUFF_DECODE_FAST(s, l, actbl);
+        HUFF_DECODE_FAST(s, actbl);
         r = s >> 4;
         s &= 15;
 
@@ -711,7 +711,7 @@ decode_mcu_fast (j_decompress_ptr cinfo, JBLOCKROW *MCU_data)
     } else {
 
       for (k = 1; k < DCTSIZE2; k++) {
-        HUFF_DECODE_FAST(s, l, actbl);
+        HUFF_DECODE_FAST(s, actbl);
         r = s >> 4;
         s &= 15;
 

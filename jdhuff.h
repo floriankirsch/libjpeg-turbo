@@ -152,6 +152,35 @@ typedef struct {                /* Bitreading working state within an MCU */
  * is evaluated multiple times.
  */
 
+
+/*
+ * On some machines, a shift and add will be faster than a table lookup.
+ * On the other hand, x86 processors appear to favor table lookups,
+ * probably because less registers are required then.
+ */
+
+//#if (!defined(_M_IX86) && (!defined(__i386)))
+//#define AVOID_TABLES
+//#endif
+
+#ifdef AVOID_TABLES
+
+#define MASK_BITS(nbits) \
+    ((1 << (nbits)) - 1)
+
+#else
+
+static const int extend_offset[17] = /* entry n is (1 << n) - 1 */
+  { 0, (1 <<  1) - 1, (1 <<  2) - 1, (1 <<  3) - 1, (1 <<  4) - 1,
+       (1 <<  5) - 1, (1 <<  6) - 1, (1 <<  7) - 1, (1 <<  8) - 1,
+       (1 <<  9) - 1, (1 << 10) - 1, (1 << 11) - 1, (1 << 12) - 1,
+       (1 << 13) - 1, (1 << 14) - 1, (1 << 15) - 1, (1 << 16) - 1 };
+
+#define MASK_BITS(nbits) \
+    (extend_offset[(nbits)])
+
+#endif
+
 #define CHECK_BIT_BUFFER(state,nbits,action) \
         { if (bits_left < (nbits)) {  \
             if (! jpeg_fill_bit_buffer(&(state),get_buffer,bits_left,nbits))  \
@@ -159,13 +188,58 @@ typedef struct {                /* Bitreading working state within an MCU */
             get_buffer = (state).get_buffer; bits_left = (state).bits_left; } }
 
 #define GET_BITS(nbits) \
-        (((int) (get_buffer >> (bits_left -= (nbits)))) & ((1<<(nbits))-1))
+        (((int) (get_buffer >> (bits_left -= (nbits)))) & (MASK_BITS(nbits)))
 
 #define PEEK_BITS(nbits) \
-        (((int) (get_buffer >> (bits_left -  (nbits)))) & ((1<<(nbits))-1))
+        (((int) (get_buffer >> (bits_left -  (nbits)))) & (MASK_BITS(nbits)))
 
 #define DROP_BITS(nbits) \
         (bits_left -= (nbits))
+
+
+/*
+* Figure F.12: extend sign bit.
+*/
+
+#ifdef AVOID_TABLES
+
+/*
+* Branchless implementation. If x < extend_test[s], (x >> (s-1)) ^ 1 is 1,
+* otherwise it is 0, because of the pre-condition that x has only
+* s significant bits. Given that, if x < extend_test[s], -(1 << s) + 1
+* is added to x, whereas in the other case -(0 << s) + 0 does not change x.
+*/
+#define HUFF_EXTEND(x,s) ((x) - ((((x) >> ((s)-1)) ^ 1) << (s)) + (((x) >> ((s)-1)) ^ 1))
+
+#else
+
+/*
+* Branchless implementation. If x < extend_test[s], (x >> (s-1)) - 1
+* is 0xffffffff, otherwise it is 0, because of the pre-condition that
+* x has only s significant bits. Given that, if x < extend_test[s],
+* the value subtracted from x is (1 << s) - 1, whereas in the other case
+* 0 is added, i.e., x remains unchanged.
+* The implementation gives the same results as the one above, but if
+* AVOID_TABLES is not set, runtime is better this way.
+*/
+#define HUFF_EXTEND(x,s) ((x) - (MASK_BITS(s) & (((x) >> ((s)-1)) - 1)))
+
+#endif
+
+#if 0
+
+/*
+* Original implementation.
+*/
+
+#define HUFF_EXTEND(x,s)  ((x) < extend_test[s] ? (x) - extend_offset[s] : (x))
+
+static const int extend_test[16] =   /* entry n is 2**(n-1) */
+  { 0, 0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080,
+       0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x4000 };
+
+#endif
+
 
 /* Load up the bit buffer to a depth of at least nbits */
 EXTERN(boolean) jpeg_fill_bit_buffer
